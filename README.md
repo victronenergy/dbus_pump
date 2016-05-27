@@ -1,4 +1,4 @@
-dbus_pum
+dbus_pump
 ==============
 
 Python script taking care of pump start/stop based on tank level. To be used on the Color Control GX.
