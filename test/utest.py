@@ -46,9 +46,9 @@ class TestPump(unittest.TestCase):
 				if not line or ":/Level" in line:
 					break
 		elif service == 'pumpstarter':
-			self.dbusgeneratorp = Popen([sys.executable, "../dbus_pump.py","-r","30"], stdout=PIPE, stderr=STDOUT)
+			self.pumpp = Popen([sys.executable, "../dbus_pump.py","-r","30"], stdout=PIPE, stderr=STDOUT)
 			while True:
-				line = self.dbusgeneratorp.stdout.readline()
+				line = self.pumpp.stdout.readline()
 				#print line.rstrip()
 				if not line or ":vedbus:registered" in line:
 					break
