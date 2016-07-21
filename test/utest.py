@@ -10,8 +10,8 @@ import calendar
 import datetime
 import json
 import sys
-from subprocess import Popen, PIPE
-from os import environ
+from subprocess import Popen, PIPE, STDOUT
+import os
 
 
 class TestPump(unittest.TestCase):
@@ -20,28 +20,52 @@ class TestPump(unittest.TestCase):
 		self._settingspath = 'com.victronenergy.settings'
 		self._tankpath = 'com.victronenergy.tank.tty40'
 		self._pumppath = 'com.victronenergy.pump.startstop0'
-		self.bus = dbus.SystemBus() if (platform.machine() == 'armv7l') else dbus.SessionBus()
+		self.systemcalcservice = 'com.victronenergy.system'
+		self.bus = dbus.SessionBus() if 'DBUS_SESSION_BUS_ADDRESS' in os.environ else dbus.SystemBus()
+		self.start_services('pumpstarter')
 		self.start_services('tank')
 		self.set_value(self._settingspath, '/Settings/Relay/Function', 3)
-		self.retriesonerror = 300
+		self.retriesonerror = 30
 		self.set_value(self._settingspath, '/Settings/Pump0/TankService', 'com.victronenergy.tank/300')
 		self.set_value(self._tankpath, '/Level', 100)
 		self.set_value(self._settingspath, '/Settings/Pump0/Mode', 2)
+		self.set_value(self._settingspath, '/Settings/Pump0/StartValue', 0)
+		self.set_value(self._settingspath, '/Settings/Pump0/StopValue', 0)
 		self.firstRun = False
 
 	def tearDown(self):
 		self.stop_services('tank')
+		self.stop_services('pumpstarter')
 
 	def start_services(self, service):
 		if service == 'tank':
-			unittest.tankp = Popen([sys.executable, 'dummytank.py'], stdout=PIPE, stderr=PIPE)
-			while unittest.tankp.stderr.readline().find(':/Level') == -1:
-				pass
-		self.set_value(self._settingspath, '/Settings/Pump0/StartValue', 0)
-		self.set_value(self._settingspath, '/Settings/Pump0/StopValue', 0)
+			self.tankp = Popen([sys.executable, "dummytank.py"], stdout=PIPE, stderr=STDOUT)
+			while True:
+				line = self.tankp.stdout.readline()
+				#print line.rstrip()
+				if not line or ":/Level" in line:
+					break
+		elif service == 'pumpstarter':
+			self.dbusgeneratorp = Popen([sys.executable, "../dbus_pump.py","-r","30"], stdout=PIPE, stderr=STDOUT)
+			while True:
+				line = self.dbusgeneratorp.stdout.readline()
+				#print line.rstrip()
+				if not line or ":vedbus:registered" in line:
+					break
 
 	def stop_services(self, service):
-			unittest.tankp.kill()
+		if service == 'tank':
+			try:
+				self.tankp.kill()
+				self.tankp.wait()
+			except (AttributeError, OSError):
+				pass
+		elif 'pumpstarter':
+			try:
+				self.pumpp.kill()
+				self.pumpp.wait()
+			except (AttributeError, OSError):
+				pass
 
 	def test_auto(self):
 
@@ -150,6 +174,8 @@ class TestPump(unittest.TestCase):
 
 	def get_state(self, delay):
 		state = self.wait_and_get('/State', delay)
+		state_on_systemcalc = self.get_value(self.systemcalcservice, "/Relay/0/State")
+		self.assertEqual(state_on_systemcalc, state)
 		return state
 
 	def set_value(self, path, setting, value):

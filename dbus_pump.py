@@ -35,12 +35,12 @@ softwareversion = '0.2'
 
 class DbusPump:
 
-	def __init__(self):
+	def __init__(self, retries=300):
 		self._bus = dbus.SystemBus() if (platform.machine() == 'armv7l') else dbus.SessionBus()
 		self.RELAY_GPIO_FILE = '/sys/class/gpio/gpio182/value'
 		self.HISTORY_DAYS = 30
 		# One second per retry
-		self.RETRIES_ON_ERROR = 300
+		self.RETRIES_ON_ERROR = retries
 		self._current_retries = 0
 
 		self.TANKSERVICE_DEFAULT = 'default'
@@ -48,6 +48,7 @@ class DbusPump:
 		self._dbusservice = None
 		self._tankservice = self.TANKSERVICE_NOTANK
 		self._valid_tank_level = True
+		self._relay_state_import = None
 
 		# DbusMonitor expects these values to be there, even though we don need them. So just
 		# add some dummy data. This can go away when DbusMonitor is more generic.
@@ -104,6 +105,19 @@ class DbusPump:
 					path='/Settings/Relay/Polarity',
 					eventCallback=None, createsignal=True)
 
+			if not self._relay_state_import:
+				logger.info('Getting relay from systemcalc.')
+				try:
+					self._relay_state_import = VeDbusItemImport(
+						bus=self._bus, serviceName='com.victronenergy.system',
+						path='/Relay/0/State',
+						eventCallback=None, createsignal=True)
+				except dbus.exceptions.DBusException:
+					logger.info('Systemcalc relay not available.')
+					self._relay_state_import = None
+					pass
+
+
 				# As is not possible to keep the relay state during the CCGX power cycles,
 				# set the relay polarity to normally open.
 				if relay_polarity_import.get_value() == 1:
@@ -134,6 +148,7 @@ class DbusPump:
 				self._stop_pump()
 				self._dbusservice.__del__()
 				self._dbusservice = None
+				self._relay_state_import = None
 
 				logger.info('Relay function is no longer set to pump startstop: made sure pump is off and going off dbus')
 
@@ -143,6 +158,10 @@ class DbusPump:
 
 	def _device_removed(self, dbusservicename, instance):
 		self._handleservicechange()
+		# Relay handling depends on systemcalc, if the service disappears restart
+		# the relay state import
+		if dbusservicename == "com.victronenergy.system":
+			self._relay_state_import = None
 		self._evaluate_if_we_are_needed()
 
 	def _dbus_value_changed(self, dbusServiceName, dbusPath, options, changes, deviceInstance):
@@ -182,6 +201,11 @@ class DbusPump:
 		return True
 
 	def _evaluate_startstop_conditions(self):
+
+		if self._settings['tankservice'] == self.TANKSERVICE_NOTANK:
+			self._stop_pump()
+			return
+
 		value = self._dbusmonitor.get_value(self._tankservice, "/Level")
 		startvalue = self._settings['startvalue']
 		stopvalue = self._settings['stopvalue']
@@ -204,6 +228,7 @@ class DbusPump:
 
 		# Auto mode, in case of an invalid reading start the retrying mechanism
 		if started and value is None and mode == 0:
+
 			# Keep the pump running during RETRIES_ON_ERROR(default 300) retries
 			if started and self._current_retries < self.RETRIES_ON_ERROR:
 				self._current_retries += 1
@@ -294,31 +319,57 @@ class DbusPump:
 		return services
 
 	def _start_pump(self):
-		# This function will start the pump in the case pump not
+		if not self._relay_state_import:
+			logger.info("Relay import not available, can't start pump by %s condition" % condition)
+			return
+
+		systemcalc_relay_state = 0
+		state = self._dbusservice['/State']
+
+		try:
+			systemcalc_relay_state = self._relay_state_import.get_value()
+		except dbus.exceptions.DBusException:
+			logger.info('Error getting relay state')
+
+		# This function will start the pump in the case the pump not
 		# already running.
-		if self._dbusservice['/State'] == 0:
+		if state == 0 or systemcalc_relay_state != state:
 			self._dbusservice['/State'] = 1
 			self._update_relay()
 			self._starttime = time.time()
 			logger.info('Starting pump')
 
 	def _stop_pump(self):
-		if self._dbusservice['/State'] == 1:
+		if not self._relay_state_import:
+			logger.info("Relay import not available, can't stop the pump")
+			return
+
+		systemcalc_relay_state = 1
+		state = self._dbusservice['/State']
+
+		try:
+			systemcalc_relay_state = self._relay_state_import.get_value()
+		except dbus.exceptions.DBusException:
+			logger.info('Error getting relay state')
+
+		if state == 1 or systemcalc_relay_state != state:
 			self._dbusservice['/State'] = 0
 			logger.info('Stopping pump')
 			self._update_relay()
 
 	def _update_relay(self):
+		if not self._relay_state_import:
+			logger.info("Relay import not available")
+			return
+
 		# Relay polarity 0 = NO, 1 = NC
 		polarity = bool(self._dbusmonitor.get_value('com.victronenergy.settings', '/Settings/Relay/Polarity'))
 		w = int(not polarity) if bool(self._dbusservice['/State']) else int(polarity)
 
 		try:
-			f = open(self.RELAY_GPIO_FILE, 'w')
-			f.write(str(w))
-			f.close()
-		except IOError:
-			logger.info('Error writting to the relay GPIO file!: %s' % self.RELAY_GPIO_FILE)
+			self._relay_state_import.set_value(dbus.Int32(w, variant_level=1))
+		except dbus.exceptions.DBusException:
+			logger.info('Error setting relay state')
 
 
 if __name__ == '__main__':
@@ -327,7 +378,9 @@ if __name__ == '__main__':
 		description='Start and stop a pump based on selected tank sensor level'
 	)
 
-	parser.add_argument('-d', '--debug', help='set logging level to debug', action='store_true')
+	parser.add_argument('-d', '--debug', help='set logging level to debug',
+						action='store_true')
+	parser.add_argument('-r', '--retries', help='Retries on error', default=300, type=int)
 
 	args = parser.parse_args()
 
@@ -337,7 +390,7 @@ if __name__ == '__main__':
 	# Have a mainloop, so we can send/receive asynchronous calls to and from dbus
 	DBusGMainLoop(set_as_default=True)
 
-	pump = DbusPump()
+	pump = DbusPump(args.retries)
 	# Start and run the mainloop
 	mainloop = gobject.MainLoop()
 	mainloop.run()
