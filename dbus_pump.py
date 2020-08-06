@@ -1,4 +1,4 @@
-#!/usr/bin/python -u
+#!/usr/bin/python3 -u
 # -*- coding: utf-8 -*-
 
 # Function
@@ -9,7 +9,8 @@
 # Time zones function allows to use different values for the conditions along the day depending on time
 
 from dbus.mainloop.glib import DBusGMainLoop
-import gobject
+from gi.repository import GObject as gobject
+from gi.repository import GLib
 import dbus
 import dbus.service
 import datetime
@@ -91,7 +92,7 @@ class DbusPump:
 		self._bus.add_signal_receiver(self._dbus_name_owner_changed, signal_name='NameOwnerChanged')
 
 		self._evaluate_if_we_are_needed()
-		gobject.timeout_add(1000, self._handletimertick)
+		GLib.timeout_add(1000, self._handletimertick)
 
 		self._changed = True
 
@@ -279,7 +280,7 @@ class DbusPump:
 		else:
 			# According to https://www.python.org/dev/peps/pep-3106/, dict.keys() and dict.values()
 			# always have the same order.
-			newtankservice = services.keys()[services.values().index(instance)]
+			newtankservice = list(services.keys())[list(services.values()).index(instance)]
 
 		if newtankservice != self._tankservice:
 			services = self._dbusmonitor.get_service_list()
@@ -384,7 +385,7 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
-	print '-------- dbus_pump, v' + softwareversion + ' is starting up --------'
+	print('-------- dbus_pump, v' + softwareversion + ' is starting up --------')
 	logger = setup_logging(args.debug)
 
 	# Have a mainloop, so we can send/receive asynchronous calls to and from dbus
@@ -392,5 +393,5 @@ if __name__ == '__main__':
 
 	pump = DbusPump(args.retries)
 	# Start and run the mainloop
-	mainloop = gobject.MainLoop()
+	mainloop = GLib.MainLoop()
 	mainloop.run()
