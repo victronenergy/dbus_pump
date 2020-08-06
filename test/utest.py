@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import unittest
@@ -39,14 +39,14 @@ class TestPump(unittest.TestCase):
 
 	def start_services(self, service):
 		if service == 'tank':
-			self.tankp = Popen([sys.executable, "dummytank.py"], stdout=PIPE, stderr=STDOUT)
+			self.tankp = Popen([sys.executable, "dummytank.py"], stdout=PIPE, stderr=STDOUT, universal_newlines=True)
 			while True:
 				line = self.tankp.stdout.readline()
 				#print line.rstrip()
 				if not line or ":/Level" in line:
 					break
 		elif service == 'pumpstarter':
-			self.pumpp = Popen([sys.executable, "../dbus_pump.py","-r","30"], stdout=PIPE, stderr=STDOUT)
+			self.pumpp = Popen([sys.executable, "../dbus_pump.py","-r","30"], stdout=PIPE, stderr=STDOUT, universal_newlines=True)
 			while True:
 				line = self.pumpp.stdout.readline()
 				#print line.rstrip()
