@@ -14,7 +14,7 @@ import dbus
 import dbus.service
 import datetime
 import calendar
-import platform
+import os
 import argparse
 import time
 import sys
@@ -36,9 +36,7 @@ softwareversion = '0.3'
 class DbusPump:
 
 	def __init__(self, retries=300):
-		self._bus = dbus.SystemBus() if (platform.machine() == 'armv7l') else dbus.SessionBus()
-		self.RELAY_GPIO_FILE = '/sys/class/gpio/gpio182/value'
-		self.HISTORY_DAYS = 30
+		self._bus = dbus.SessionBus() if 'DBUS_SESSION_BUS_ADDRESS' in os.environ else dbus.SystemBus()
 		# One second per retry
 		self.RETRIES_ON_ERROR = retries
 		self._current_retries = 0
@@ -115,7 +113,6 @@ class DbusPump:
 				except dbus.exceptions.DBusException:
 					logger.info('Systemcalc relay not available.')
 					self._relay_state_import = None
-					pass
 
 
 				# As is not possible to keep the relay state during the CCGX power cycles,
