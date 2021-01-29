@@ -30,7 +30,7 @@ from dbusmonitor import DbusMonitor
 from settingsdevice import SettingsDevice
 from logger import setup_logging
 
-softwareversion = '0.3'
+softwareversion = '0.4'
 
 
 class DbusPump:
