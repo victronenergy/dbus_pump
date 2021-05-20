@@ -302,7 +302,7 @@ class DbusPump:
 
 	def _get_readable_service_name(self, servicename):
 		fluidTypes = ['Fuel', 'Fresh water', 'Waste water', 'Live well',
-															'Oil', 'Black water']
+						'Oil', 'Black water', 'Fuel (gasoline)']
 
 		index = self._dbusmonitor.get_value(servicename, '/FluidType')
 		service = self._dbusmonitor.get_value(servicename, '/Mgmt/Connection')
