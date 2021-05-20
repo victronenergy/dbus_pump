@@ -301,12 +301,12 @@ class DbusPump:
 		self._determinetankservice()
 
 	def _get_readable_service_name(self, servicename):
-		fluidType = ['Fuel', 'Fresh water', 'Waste water', 'Live well',
+		fluidTypes = ['Fuel', 'Fresh water', 'Waste water', 'Live well',
 															'Oil', 'Black water']
 
-		fluid = fluidType[self._dbusmonitor.get_value(servicename, '/FluidType')]
-
-		return (fluid + ' on ' + self._dbusmonitor.get_value(servicename, '/Mgmt/Connection'))
+		index = self._dbusmonitor.get_value(servicename, '/FluidType')
+		service = self._dbusmonitor.get_value(servicename, '/Mgmt/Connection')
+		return ('' if index >= len(fluidTypes) else fluidTypes[index] + ' on ') + service
 
 	def _get_instance_service_name(self, service, instance):
 		return '%s/%s' % ('.'.join(service.split('.')[0:3]), instance)
