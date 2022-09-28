@@ -66,6 +66,8 @@ class DbusPump(object):
 				'/Level': dummy,
 				'/FluidType': dummy,
 				'/ProductName': dummy,
+				'/CustomName': dummy,
+				'/DeviceName': dummy,
 				'/Mgmt/Connection': dummy
 			}
 		}, self._dbus_value_changed, self._device_added, self._device_removed)
@@ -305,8 +307,13 @@ class DbusPump(object):
 						'Oil', 'Black water', 'Fuel (gasoline)']
 
 		index = self._dbusmonitor.get_value(servicename, '/FluidType')
+		customname = self._dbusmonitor.get_value(servicename, '/CustomName')
+		devicename = self._dbusmonitor.get_value(servicename, '/DeviceName')
 		service = self._dbusmonitor.get_value(servicename, '/Mgmt/Connection')
-		return ('' if index >= len(fluidTypes) else fluidTypes[index] + ' on ') + service
+
+		text = ('' if index >= len(fluidTypes) else fluidTypes[index] + ' on ')
+		text += (customname if customname else devicename if devicename else service)
+		return text
 
 	def _get_instance_service_name(self, service, instance):
 		return '%s/%s' % ('.'.join(service.split('.')[0:3]), instance)
