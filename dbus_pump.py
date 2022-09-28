@@ -304,7 +304,9 @@ class DbusPump(object):
 
 	def _get_readable_service_name(self, servicename):
 		fluidTypes = ['Fuel', 'Fresh water', 'Waste water', 'Live well',
-						'Oil', 'Black water', 'Fuel (gasoline)']
+						'Oil', 'Black water (sewage)', 'Gasoline', 'Diesel',
+                        'Liquid Petroleum Gas (LPG)', 'Liquid Natural Gas (LNG)',
+                        'Hydraulic oil', 'Raw water']
 
 		index = self._dbusmonitor.get_value(servicename, '/FluidType')
 		customname = self._dbusmonitor.get_value(servicename, '/CustomName')
