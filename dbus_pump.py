@@ -84,12 +84,6 @@ class DbusPump(object):
 			},
 			eventCallback=self._handle_changed_setting)
 
-		# Whenever services come or go, we need to check if it was a service we use. Note that this
-		# is a bit double: DbusMonitor does the same thing. But since we don't use DbusMonitor to
-		# monitor for com.victronenergy.battery, .vebus, .charger or any other possible source of
-		# battery data, it is necessary to monitor for changes in the available dbus services.
-		self._bus.add_signal_receiver(self._dbus_name_owner_changed, signal_name='NameOwnerChanged')
-
 		self._evaluate_if_we_are_needed()
 		GLib.timeout_add(1000, self._handletimertick)
 
@@ -180,9 +174,6 @@ class DbusPump(object):
 
 		if setting == 'autostart':
 				logger.info('Autostart function %s.' % ('enabled' if newvalue == 1 else 'disabled'))
-
-	def _dbus_name_owner_changed(self, name, oldowner, newowner):
-		return True
 
 	def _handletimertick(self):
 		# try catch, to make sure that we kill ourselves on an error. Without this try-catch, there would
