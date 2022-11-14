@@ -255,6 +255,9 @@ class DbusPump(object):
 			self._stop_pump()
 
 	def _determinetankservice(self):
+        if self._settings['tankservice'] == self.TANKSERVICE_NOTANK:
+            logger.info("Cannot determine tank sensor set to none.")
+            return
 		s = self._settings['tankservice'].split('/')
 		if len(s) != 2:
 			logger.error("The tank setting (%s) is invalid!" % self._settings['tankservice'])
