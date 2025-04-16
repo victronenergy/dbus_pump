@@ -118,7 +118,7 @@ class DbusPump(object):
 					logger.info('Setting relay polarity to normally open.')
 
 				# put ourselves on the dbus
-				self._dbusservice = VeDbusService('com.victronenergy.pump.startstop0')
+				self._dbusservice = VeDbusService('com.victronenergy.pump.startstop0', register=False)
 				self._dbusservice.add_mandatory_paths(
 					processname=__file__,
 					processversion=softwareversion,
@@ -133,6 +133,7 @@ class DbusPump(object):
 				self._dbusservice.add_path('/State', value=0)
 				self._dbusservice.add_path('/AvailableTankServices', value=None)
 				self._dbusservice.add_path('/ActiveTankService', value=None)
+				self._dbusservice.register()
 				self._update_relay()
 				self._handleservicechange()
 
