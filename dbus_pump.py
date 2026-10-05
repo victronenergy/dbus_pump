@@ -162,6 +162,10 @@ class DbusPump(object):
 
 		if dbusPath == '/Settings/Relay/Function':
 			self._evaluate_if_we_are_needed()
+		# The tank names in /AvailableTankServices contain these
+		if dbusServiceName.startswith('com.victronenergy.tank') and \
+				dbusPath in ('/FluidType', '/CustomName', '/DeviceName'):
+			self._handleservicechange()
 		self._changed = True
 		# Update relay state when polarity changes
 		if dbusPath == '/Settings/Relay/Polarity':
@@ -308,7 +312,9 @@ class DbusPump(object):
 		devicename = self._dbusmonitor.get_value(servicename, '/DeviceName')
 		service = self._dbusmonitor.get_value(servicename, '/Mgmt/Connection')
 
-		text = ('' if index >= len(fluidTypes) else fluidTypes[index] + ' on ')
+		# index can be invalid while the tank starts up or changes
+		valid = isinstance(index, int) and 0 <= index < len(fluidTypes)
+		text = (fluidTypes[index] + ' on ' if valid else '')
 		text += (customname if customname else devicename if devicename else service)
 		return text
 
