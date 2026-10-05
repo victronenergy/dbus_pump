@@ -285,6 +285,9 @@ class DbusPump(object):
 			self._tankservice = newtankservice
 
 	def _handleservicechange(self):
+		# only on dbus when the relay is used for the pump
+		if self._dbusservice is None:
+			return
 
 		services = self._get_connected_service_list('com.victronenergy.tank')
 		ul = {self.TANKSERVICE_NOTANK: 'No tank sensor'}
