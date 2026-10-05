@@ -91,14 +91,6 @@ class DbusPump(object):
 
 	def _evaluate_if_we_are_needed(self):
 		if self._dbusmonitor.get_value('com.victronenergy.settings', '/Settings/Relay/Function') == 3:
-			if self._dbusservice is None:
-				logger.info('Action! Going on dbus and taking control of the relay.')
-
-				relay_polarity_import = VeDbusItemImport(
-					bus=self._bus, serviceName='com.victronenergy.settings',
-					path='/Settings/Relay/Polarity',
-					eventCallback=None, createsignal=True)
-
 			if not self._relay_state_import:
 				logger.info('Getting relay from systemcalc.')
 				try:
@@ -110,6 +102,13 @@ class DbusPump(object):
 					logger.info('Systemcalc relay not available.')
 					self._relay_state_import = None
 
+			if self._dbusservice is None:
+				logger.info('Action! Going on dbus and taking control of the relay.')
+
+				relay_polarity_import = VeDbusItemImport(
+					bus=self._bus, serviceName='com.victronenergy.settings',
+					path='/Settings/Relay/Polarity',
+					eventCallback=None, createsignal=True)
 
 				# As is not possible to keep the relay state during the CCGX power cycles,
 				# set the relay polarity to normally open.
