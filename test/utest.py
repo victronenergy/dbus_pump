@@ -22,9 +22,10 @@ class TestPump(unittest.TestCase):
 		self._pumppath = 'com.victronenergy.pump.startstop0'
 		self.systemcalcservice = 'com.victronenergy.system'
 		self.bus = dbus.SessionBus() if 'DBUS_SESSION_BUS_ADDRESS' in os.environ else dbus.SystemBus()
+		# dbus_pump only registers when the relay is used for the pump
+		self.set_value(self._settingspath, '/Settings/Relay/Function', 3)
 		self.start_services('pumpstarter')
 		self.start_services('tank')
-		self.set_value(self._settingspath, '/Settings/Relay/Function', 3)
 		self.retriesonerror = 30
 		self.set_value(self._settingspath, '/Settings/Pump0/TankService', 'com.victronenergy.tank/300')
 		self.set_value(self._tankpath, '/Level', 100)
